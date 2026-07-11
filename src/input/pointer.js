@@ -9,6 +9,11 @@
 // so the renderer/HUD can draw the ghost; input never mutates sim state.
 
 import { screenToWorld } from '../render/camera.js';
+import { FIELD } from '../sim/data.js';
+
+function inField(x, y) {
+  return x >= 0 && x <= FIELD.W && y >= 0 && y <= FIELD.H;
+}
 
 export function setupPointer(canvas, cam, hud, api) {
   // api: { enqueue(cmd), getState(), restart() }
@@ -59,11 +64,18 @@ export function setupPointer(canvas, cam, hud, api) {
 
   function onUp(e) {
     if (!drag.active || e.pointerId !== drag.pointerId) return;
-    // The sim authoritatively re-validates; an invalid drop just emits 'error'.
-    api.enqueue({
-      playerId: drag.playerId, type: drag.type, card: drag.card,
-      x: drag.worldX, y: drag.worldY,
-    });
+    // Only a release over the play area (and NOT over the card row, which
+    // visually overlaps the field's bottom edge) is a real placement attempt.
+    // A plain tap on a card, or a release in the letterbox, silently cancels
+    // instead of firing an off-field command + error beep. Valid in-field drops
+    // still go to the sim, which authoritatively re-validates (mana/half).
+    const { px, py } = toBacking(e);
+    if (inField(drag.worldX, drag.worldY) && !hud.hitTestCard(px, py)) {
+      api.enqueue({
+        playerId: drag.playerId, type: drag.type, card: drag.card,
+        x: drag.worldX, y: drag.worldY,
+      });
+    }
     drag.active = false;
     drag.pointerId = null;
     canvas.releasePointerCapture?.(e.pointerId);

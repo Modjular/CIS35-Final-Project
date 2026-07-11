@@ -111,7 +111,8 @@ export const SPELL = {
 // Reproduce that as an instantaneous velocity impulse on the sim body.
 export const KNOCKBACK_IMPULSE = (SPELL.EXPLOSION.force / UNIT_MASS) * UNITY_FIXED_DT;
 
-// ---- Health bar display scales (presentation) ----
+// ---- Presentation constants (shared by sim event timing + renderer) ----
+export const FLASH_TIME = 0.3;            // seconds a damage flash lasts/decays
 export const BAR_SCALE = { small: 0.8, medium: 1.0, large: 1.5 };
 
 // Helper: which player owns which team (identity separate from team).

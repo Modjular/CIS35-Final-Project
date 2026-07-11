@@ -22,7 +22,8 @@ const sound = createSound();
 let state = createInitialState();
 
 // Load art + audio asynchronously; the debug backend renders until art is ready.
-loadSprites().then((sm) => renderer.setSprites(sm)).catch((e) => console.warn('sprites', e));
+let spriteMgr = null;
+loadSprites().then((sm) => { spriteMgr = sm; renderer.setSprites(sm); }).catch((e) => console.warn('sprites', e));
 sound.load().catch((e) => console.warn('audio', e));
 
 const drag = setupPointer(canvas, renderer.cam, hud, {
@@ -67,7 +68,7 @@ function frame(now) {
 
   const alpha = acc / DT;
   renderer.draw(state, alpha, { grid: DEBUG.grid });
-  hud.draw(renderer.ctx, renderer.cam, state, drag);
+  hud.draw(renderer.ctx, renderer.cam, state, drag, spriteMgr);
   drawDebugOverlay(steps);
   requestAnimationFrame(frame);
 }

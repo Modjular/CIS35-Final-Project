@@ -6,15 +6,13 @@
 
 import {
   DT, SIGHT_RADIUS, UNITS, TOWER, MANA, TEAM,
-  LANE_ADVANCE_DIST, PLACEMENT, CARD_BY_ID, SPELL, KNOCKBACK_IMPULSE,
+  LANE_ADVANCE_DIST, PLACEMENT, CARD_BY_ID, SPELL, KNOCKBACK_IMPULSE, FLASH_TIME,
 } from './data.js';
 import { createUnit, createEffect } from './state.js';
 import {
   steerAndIntegrate, driftAndIntegrate, applyImpulse,
   resolveAllCollisions,
 } from './physics.js';
-
-const FLASH_TIME = 0.3;   // seconds of damage flash (presentation)
 
 function dist(ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay;

@@ -13,10 +13,16 @@ const RED = '#e8663a';
 const GREEN = '#4fd08a';
 
 export function createHud() {
-  // Recomputed on every draw from the current canvas size.
+  // Layout is static geometry: cache it and only rebuild when the canvas size
+  // (or dpr) actually changes, instead of reallocating it every frame.
   let layout = { cards: [], mana: [], restart: null };
+  let layoutKey = '';
 
   function computeLayout(cam) {
+    const key = `${cam.cssW}x${cam.cssH}@${cam.dpr}`;
+    if (key === layoutKey) return layout;
+    layoutKey = key;
+
     const W = cam.cssW * cam.dpr;
     const H = cam.cssH * cam.dpr;
     const pad = Math.round(10 * cam.dpr);
@@ -53,7 +59,7 @@ export function createHud() {
     return layout;
   }
 
-  function drawCard(ctx, cardRect, def, affordable, dragging, cam) {
+  function drawCard(ctx, cardRect, def, affordable, dragging, cam, sprites) {
     const { x, y, w, h } = cardRect;
     const teamColor = cardRect.team === TEAM.RED ? RED : GREEN;
     ctx.save();
@@ -66,18 +72,24 @@ export function createHud() {
     ctx.strokeStyle = dragging ? '#fff' : teamColor;
     ctx.stroke();
 
-    // Placeholder face: team-tinted disc + unit/spell label.
-    ctx.fillStyle = teamColor;
-    ctx.beginPath();
-    ctx.arc(x + w / 2, y + h * 0.42, Math.min(w, h) * 0.24, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#dfe6ee';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `${Math.round(h * 0.14)}px system-ui, sans-serif`;
-    const label = def.spell ? 'BOOM' : def.unit.slice(0, 5);
-    ctx.fillText(label, x + w / 2, y + h * 0.74);
+    // Face: the actual unit sprite (or explosion) when art is loaded; otherwise
+    // a team-tinted placeholder disc.
+    let drewFace = false;
+    if (sprites && sprites.ready) {
+      drewFace = sprites.drawCardFace(ctx, cardRect.team, cardRect.card,
+        x + w * 0.12, y + h * 0.08, w * 0.76, h * 0.6);
+    }
+    if (!drewFace) {
+      ctx.fillStyle = teamColor;
+      ctx.beginPath();
+      ctx.arc(x + w / 2, y + h * 0.42, Math.min(w, h) * 0.24, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#dfe6ee';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `${Math.round(h * 0.14)}px system-ui, sans-serif`;
+      ctx.fillText(def.spell ? 'BOOM' : def.unit.slice(0, 5), x + w / 2, y + h * 0.74);
+    }
 
     // Cost badge (bottom-right).
     const bs = Math.round(h * 0.26);
@@ -172,14 +184,14 @@ export function createHud() {
     ctx.restore();
   }
 
-  function draw(ctx, cam, state, drag) {
+  function draw(ctx, cam, state, drag, sprites) {
     computeLayout(cam);
     const manaByTeam = Object.fromEntries(state.players.map((p) => [p.team, p.mana]));
     for (const cr of layout.cards) {
       const def = CARDS.find((c) => c.id === cr.card);
       const affordable = manaByTeam[cr.team] >= def.cost && !state.winner;
       const dragging = drag && drag.active && drag.card === cr.card && drag.playerId === cr.playerId;
-      drawCard(ctx, cr, def, affordable, dragging, cam);
+      drawCard(ctx, cr, def, affordable, dragging, cam, sprites);
     }
     for (const bar of layout.mana) drawManaBar(ctx, bar, manaByTeam[bar.team], cam);
     drawGhost(ctx, cam, state, drag);
