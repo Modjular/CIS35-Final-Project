@@ -76,14 +76,21 @@ class SpriteManager {
     return Math.floor((clock + phase) * this.fps) % n;
   }
 
-  // Draw a unit/tower sprite centered at screen (cx, cy). worldH in world units,
-  // scalePx = camera scale. flip mirrors horizontally. flash in [0,1] tints cyan.
-  _blit(ctx, im, frame, cx, cy, worldH, scalePx, flip, flash) {
+  // The opaque source rect to draw: the baked content-trim box when present,
+  // else the whole frame. Sizing by the trim (not the padded frame) is what
+  // keeps a unit the same size across its move/fire sheets.
+  _src(im, frame) {
+    return frame.trim || frame;
+  }
+
+  // Draw source rect `src` (in sheet px) centered at (cx,cy) at a given WORLD
+  // size (dwWorld x dhWorld). flip mirrors horizontally; flash in [0,1] tints cyan.
+  _blitRect(ctx, im, src, cx, cy, dwWorld, dhWorld, scalePx, flip, flash) {
     if (!im || !im.img) return false;
-    const dh = worldH * scalePx;
-    const dw = dh * (frame.w / frame.h);
-    let src = im.img;
-    let sx = frame.x, sy = frame.y, sw = frame.w, sh = frame.h;
+    const dw = dwWorld * scalePx, dh = dhWorld * scalePx;
+    let img = im.img;
+    let sx = src.x, sy = src.y;
+    const sw = src.w, sh = src.h;
 
     // Hit-flash: composite a cyan wash onto just the sprite's pixels via a buffer.
     if (flash > 0) {
@@ -94,15 +101,24 @@ class SpriteManager {
       this._bctx.fillStyle = `rgba(90,255,255,${0.6 * flash})`;
       this._bctx.fillRect(0, 0, sw, sh);
       this._bctx.globalCompositeOperation = 'source-over';
-      src = this._buf; sx = 0; sy = 0;
+      img = this._buf; sx = 0; sy = 0;
     }
 
     ctx.save();
     ctx.translate(cx, cy);
     if (flip) ctx.scale(-1, 1);
-    ctx.drawImage(src, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh);
+    ctx.drawImage(img, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh);
     ctx.restore();
     return true;
+  }
+
+  // Size a source rect so its CONTENT maps to `targetH` world units, using the
+  // image's median content height as the shared reference (so every frame of a
+  // sheet — and the move vs fire sheets — render at the same character size).
+  _worldSize(im, src, targetH) {
+    const ref = im.contentH || src.h;   // fall back to frame height if untrimmed
+    const wpp = targetH / ref;           // world units per source pixel
+    return { dw: src.w * wpp, dh: src.h * wpp };
   }
 
   drawUnit(ctx, u, cx, cy, scalePx, clock) {
@@ -112,14 +128,18 @@ class SpriteManager {
     const isStatic = state === 'move' && set.moveStatic;
     const phase = (u.id % 7) * 0.03; // desync identical units slightly
     const frame = im.frames[isStatic ? 0 : this.frameIndex(im, clock, phase)];
+    const src = this._src(im, frame);
+    const { dw, dh } = this._worldSize(im, src, TARGET_H[u.unitType]);
     // Mirror only when the unit faces opposite to the sheet's native facing.
     const flip = u.facing !== (set.face ?? -1);
-    return this._blit(ctx, im, frame, cx, cy, TARGET_H[u.unitType], scalePx, flip, flashAmt(u));
+    return this._blitRect(ctx, im, src, cx, cy, dw, dh, scalePx, flip, flashAmt(u));
   }
 
   drawTower(ctx, t, cx, cy, scalePx) {
     const im = this.image(t.team === TEAM.RED ? 'hq_red' : 'hq_green');
-    return this._blit(ctx, im, im.frames[0], cx, cy, HQ_TARGET_H, scalePx, false, flashAmt(t));
+    const src = this._src(im, im.frames[0]);
+    const { dw, dh } = this._worldSize(im, src, HQ_TARGET_H);
+    return this._blitRect(ctx, im, src, cx, cy, dw, dh, scalePx, false, flashAmt(t));
   }
 
   // Draw a card's face (unit sheet frame 0, or an explosion frame) fit into the
@@ -139,7 +159,8 @@ class SpriteManager {
       frame = im.frames[0];
       flip = (set.face ?? -1) === -1;                        // mirror left-facing art to face right
     }
-    const ar = frame.w / frame.h;
+    const src = this._src(im, frame);                     // fit the trimmed content
+    const ar = src.w / src.h;
     let dw = bw, dh = bw / ar;
     if (dh > bh) { dh = bh; dw = bh * ar; }
     const cx = bx + bw / 2, cy = by + bh / 2;
@@ -147,17 +168,20 @@ class SpriteManager {
     ctx.imageSmoothingEnabled = false;
     ctx.translate(cx, cy);
     if (flip) ctx.scale(-1, 1);
-    ctx.drawImage(im.img, frame.x, frame.y, frame.w, frame.h, -dw / 2, -dh / 2, dw, dh);
+    ctx.drawImage(im.img, src.x, src.y, src.w, src.h, -dw / 2, -dh / 2, dw, dh);
     ctx.restore();
     return true;
   }
 
-  // Explosion one-shot: pick a frame from age/ttl (no loop).
+  // Explosion one-shot: pick a frame from age/ttl (no loop). Uses the RAW frame
+  // (not the content trim) on purpose, so the blast visibly grows frame to frame.
   drawExplosion(ctx, fx, cx, cy, scalePx) {
     const im = this.image('explosion');
     if (!im || !im.img) return false;
     const n = im.frames.length;
     const idx = Math.min(n - 1, Math.floor((fx.age / fx.ttl) * n));
-    return this._blit(ctx, im, im.frames[idx], cx, cy, EXPLOSION_TARGET_H, scalePx, false, 0);
+    const frame = im.frames[idx];
+    const dh = EXPLOSION_TARGET_H, dw = dh * (frame.w / frame.h);
+    return this._blitRect(ctx, im, frame, cx, cy, dw, dh, scalePx, false, 0);
   }
 }

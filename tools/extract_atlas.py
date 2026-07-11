@@ -77,9 +77,40 @@ def parse_frames(meta_path, sheet_h):
     entries.sort(key=lambda e: e[0])
     return [e[1] for e in entries]
 
+# Optional: compute the opaque (alpha>0) bounding box of each frame so the
+# renderer can size sprites by CONTENT instead of the raw frame. The ripped
+# fire sheets carry lots of transparent padding (e.g. a 28px infantry inside a
+# 64px frame), so frame-height sizing makes units jump size between move/fire.
+try:
+    from PIL import Image as _PILImage
+    _HAVE_PIL = True
+except ImportError:
+    _HAVE_PIL = False
+
+def add_trims(sheet_path, frames):
+    """Attach a `trim` (opaque bbox in sheet coords) to each frame + median height."""
+    if not _HAVE_PIL:
+        return None
+    img = _PILImage.open(sheet_path).convert("RGBA")
+    heights = []
+    for fr in frames:
+        sub = img.crop((fr["x"], fr["y"], fr["x"] + fr["w"], fr["y"] + fr["h"]))
+        bbox = sub.getbbox()  # (l, t, r, b) of non-zero-alpha pixels, or None
+        if bbox:
+            fr["trim"] = {"x": fr["x"] + bbox[0], "y": fr["y"] + bbox[1],
+                          "w": bbox[2] - bbox[0], "h": bbox[3] - bbox[1]}
+        else:
+            fr["trim"] = {"x": fr["x"], "y": fr["y"], "w": fr["w"], "h": fr["h"]}
+        heights.append(fr["trim"]["h"])
+    heights.sort()
+    return heights[len(heights) // 2]  # median content height
+
 def main():
     os.makedirs(OUT_SPRITES, exist_ok=True)
     os.makedirs(OUT_AUDIO, exist_ok=True)
+    if not _HAVE_PIL:
+        print("  NOTE: Pillow not installed; skipping content-trim computation "
+              "(renderer will fall back to frame sizing).", file=sys.stderr)
 
     atlas = {"pixelsPerUnit": 100, "fps": 12, "images": {}}
     for name, (rel, sliced) in IMAGES.items():
@@ -89,7 +120,8 @@ def main():
             continue
         w, h = png_size(src)
         out_name = name + ".png"
-        shutil.copyfile(src, os.path.join(OUT_SPRITES, out_name))
+        out_path = os.path.join(OUT_SPRITES, out_name)
+        shutil.copyfile(src, out_path)
         if sliced:
             frames = parse_frames(src + ".meta", h)
             if not frames:
@@ -97,8 +129,13 @@ def main():
                 frames = [{"x": 0, "y": 0, "w": w, "h": h}]
         else:
             frames = [{"x": 0, "y": 0, "w": w, "h": h}]
-        atlas["images"][name] = {"file": out_name, "w": w, "h": h, "frames": frames}
-        print(f"  {name:14s} {len(frames):2d} frame(s)  {w}x{h}")
+        content_h = add_trims(out_path, frames)
+        entry = {"file": out_name, "w": w, "h": h, "frames": frames}
+        if content_h:
+            entry["contentH"] = content_h
+        atlas["images"][name] = entry
+        print(f"  {name:14s} {len(frames):2d} frame(s)  {w}x{h}"
+              + (f"  contentH={content_h}" if content_h else ""))
 
     with open(os.path.join(OUT_DIR, "atlas.json"), "w") as f:
         json.dump(atlas, f, indent=1)
