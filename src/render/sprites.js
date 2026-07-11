@@ -13,18 +13,18 @@ import { TEAM, FLASH_TIME, CARD_BY_ID } from '../sim/data.js';
 
 // (team, unit) -> { move, fire, moveStatic?, face }. logical names index atlas.images.
 //
-// `face` is the sheet's NATIVE facing (+1 right, -1 left), read from the actual
-// art. The two ripped factions are drawn facing OPPOSITE ways: Orange Star (red)
-// vehicles face LEFT, Green Earth (green) vehicles face RIGHT; infantry of both
-// factions face RIGHT. The renderer mirrors a sprite only when the unit's facing
-// differs from its sheet's native facing, so each sheet is handled on its own
-// terms (a blanket assumption previously flipped green vehicles and infantry).
+// `face` is the sheet's NATIVE facing (+1 right, -1 left), read from the art.
+// Every ripped sheet — both factions, all unit types, move and fire — is drawn
+// facing RIGHT (barrel/rifle points right, exhaust/rear on the left). The
+// renderer mirrors a sprite only when a unit faces left, so Red (marching right)
+// draws as-is and Green (marching left) is flipped. `face` is kept per-entry so
+// a future sheet that happens to face left can be corrected in one place.
 const MAP = {
   red: {
-    TANK:     { move: 'os_tank_move',  fire: 'os_tank_fire',  face: -1 }, // move = single frame
-    MTANK:    { move: 'os_mtank_fire', fire: 'os_mtank_fire', face: -1, moveStatic: true }, // no OS mtank move sheet
-    INFANTRY: { move: 'os_inf_move',   fire: 'os_inf_fire',   face: 1  },
-    RECON:    { move: 'os_recon_move', fire: 'os_recon_fire', face: -1 }, // move = single frame
+    TANK:     { move: 'os_tank_move',  fire: 'os_tank_fire',  face: 1 }, // move = single frame
+    MTANK:    { move: 'os_mtank_fire', fire: 'os_mtank_fire', face: 1, moveStatic: true }, // no OS mtank move sheet
+    INFANTRY: { move: 'os_inf_move',   fire: 'os_inf_fire',   face: 1 },
+    RECON:    { move: 'os_recon_move', fire: 'os_recon_fire', face: 1 }, // move = single frame
   },
   green: {
     TANK:     { move: 'ge_tank_move',  fire: 'ge_tank_fire',  face: 1 },
@@ -132,7 +132,7 @@ class SpriteManager {
     const src = this._src(im, frame);
     const { dw, dh } = this._worldSize(im, src, TARGET_H[u.unitType]);
     // Mirror only when the unit faces opposite to the sheet's native facing.
-    const flip = u.facing !== (set.face ?? -1);
+    const flip = u.facing !== (set.face ?? 1);
     return this._blitRect(ctx, im, src, cx, cy, dw, dh, scalePx, flip, flashAmt(u));
   }
 
@@ -158,7 +158,7 @@ class SpriteManager {
       im = this.image(set.move);
       if (!im || !im.img) return false;
       frame = im.frames[0];
-      flip = (set.face ?? -1) === -1;                        // mirror left-facing art to face right
+      flip = (set.face ?? 1) === -1;                         // mirror left-facing art to face right
     }
     const src = this._src(im, frame);                     // fit the trimmed content
     const ar = src.w / src.h;
