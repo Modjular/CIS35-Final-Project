@@ -163,5 +163,5 @@ export function createRenderer(canvas) {
     drawEffects(alpha);
   }
 
-  return { resize, draw, cam };
+  return { resize, draw, cam, ctx };
 }

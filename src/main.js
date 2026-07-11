@@ -8,12 +8,21 @@ import { DT, TICK_RATE } from './sim/data.js';
 import { createInitialState } from './sim/state.js';
 import { step } from './sim/sim.js';
 import { createRenderer } from './render/renderer.js';
+import { createHud } from './render/hud.js';
+import { setupPointer } from './input/pointer.js';
 
 const canvas = document.getElementById('game');
 const debugEl = document.getElementById('debug');
 const renderer = createRenderer(canvas);
+const hud = createHud();
 
 let state = createInitialState();
+
+const drag = setupPointer(canvas, renderer.cam, hud, {
+  enqueue: (cmd) => enqueue(cmd),
+  getState: () => state,
+  restart: () => { state = createInitialState(); pending = []; },
+});
 
 // Pending commands, keyed by nothing fancy: everything queued before a tick is
 // applied on that tick (later: sorted/validated per player for netcode).
@@ -49,6 +58,7 @@ function frame(now) {
 
   const alpha = acc / DT;
   renderer.draw(state, alpha, { grid: DEBUG.grid });
+  hud.draw(renderer.ctx, renderer.cam, state, drag);
   drawDebugOverlay(steps);
   requestAnimationFrame(frame);
 }

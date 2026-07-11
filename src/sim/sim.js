@@ -42,6 +42,27 @@ function inHalf(x, y, half) {
   return x >= half.left && x <= half.right && y >= half.bottom && y <= half.top;
 }
 
+// Non-mutating validation + grid snap. The UI uses this for the drag ghost and
+// validity highlight so placement rules live in ONE place (the sim), never the UI.
+// Returns { ok, affordable, placeable, x, y, cost, team } (x/y are snapped).
+export function previewCommand(state, cmd) {
+  const player = state.players.find((p) => p.id === cmd.playerId);
+  if (!player) return { ok: false };
+  const team = player.team;
+  const card = CARD_BY_ID[cmd.card];
+  if (!card) return { ok: false };
+
+  const isSpell = cmd.type === 'CAST_SPELL';
+  const half = isSpell ? PLACEMENT.spell : PLACEMENT[team];
+  const affordable = player.mana >= card.cost;
+  const placeable = inHalf(cmd.x, cmd.y, half);
+  const pos = snap(cmd.x, cmd.y, half);
+  return {
+    ok: affordable && placeable && !state.winner,
+    affordable, placeable, x: pos.x, y: pos.y, cost: card.cost, team, isSpell,
+  };
+}
+
 // Validate + apply a single command. Returns true on success.
 // Invalid placement / insufficient mana emits an 'error' event and spends nothing.
 export function applyCommand(state, cmd) {
@@ -52,18 +73,15 @@ export function applyCommand(state, cmd) {
   const card = CARD_BY_ID[cmd.card];
   if (!card) return false;
 
-  const isSpell = cmd.type === 'CAST_SPELL';
-  const half = isSpell ? PLACEMENT.spell : PLACEMENT[team];
-
-  const affordable = player.mana >= card.cost;
-  const placeable = inHalf(cmd.x, cmd.y, half);
-  if (!affordable || !placeable) {
+  const pv = previewCommand(state, cmd);
+  if (!pv.ok) {
     emit(state, { type: 'error', team });
     return false;
   }
 
-  const pos = snap(cmd.x, cmd.y, half);
+  const pos = { x: pv.x, y: pv.y };
   player.mana -= card.cost;
+  const isSpell = cmd.type === 'CAST_SPELL';
 
   if (isSpell) {
     castExplosion(state, team, pos.x, pos.y);
