@@ -13,11 +13,12 @@ import { TEAM, FLASH_TIME, CARD_BY_ID } from '../sim/data.js';
 
 // (team, unit) -> { move, fire, moveStatic?, face }. logical names index atlas.images.
 //
-// `face` is the sheet's NATIVE facing (+1 right, -1 left), determined from the
-// actual art: the ripped infantry sheets face RIGHT, every vehicle sheet faces
-// LEFT. The renderer mirrors a sprite only when the unit's facing differs from
-// its sheet's native facing — so a blanket assumption can't send one unit type
-// the wrong way (the earlier bug: infantry rendered backwards for both teams).
+// `face` is the sheet's NATIVE facing (+1 right, -1 left), read from the actual
+// art. The two ripped factions are drawn facing OPPOSITE ways: Orange Star (red)
+// vehicles face LEFT, Green Earth (green) vehicles face RIGHT; infantry of both
+// factions face RIGHT. The renderer mirrors a sprite only when the unit's facing
+// differs from its sheet's native facing, so each sheet is handled on its own
+// terms (a blanket assumption previously flipped green vehicles and infantry).
 const MAP = {
   red: {
     TANK:     { move: 'os_tank_move',  fire: 'os_tank_fire',  face: -1 }, // move = single frame
@@ -26,10 +27,10 @@ const MAP = {
     RECON:    { move: 'os_recon_move', fire: 'os_recon_fire', face: -1 }, // move = single frame
   },
   green: {
-    TANK:     { move: 'ge_tank_move',  fire: 'ge_tank_fire',  face: -1 },
-    MTANK:    { move: 'ge_mtank_move', fire: 'ge_mtank_fire', face: -1 },
-    INFANTRY: { move: 'ge_inf_move',   fire: 'ge_inf_fire',   face: 1  },
-    RECON:    { move: 'ge_tank_move',  fire: 'ge_tank_fire',  face: -1 }, // no GE recon art -> tank stand-in
+    TANK:     { move: 'ge_tank_move',  fire: 'ge_tank_fire',  face: 1 },
+    MTANK:    { move: 'ge_mtank_move', fire: 'ge_mtank_fire', face: 1 },
+    INFANTRY: { move: 'ge_inf_move',   fire: 'ge_inf_fire',   face: 1 },
+    RECON:    { move: 'ge_tank_move',  fire: 'ge_tank_fire',  face: 1 }, // no GE recon art -> tank stand-in
   },
 };
 
