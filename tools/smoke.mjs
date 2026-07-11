@@ -7,7 +7,11 @@ const url = process.argv[2] || 'http://localhost:8000/';
 const out = process.argv[3] || '/tmp/shot.png';
 const phase = process.argv[4] || 'debug';
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
+import { globSync } from 'node:fs';
+const chromePath = process.env.CHROMIUM_PATH
+  || globSync('/opt/pw-browsers/chromium-*/chrome-linux/chrome').sort().pop()
+  || undefined; // fall back to Playwright's own resolution
+const browser = await chromium.launch(chromePath ? { executablePath: chromePath } : {});
 const page = await browser.newPage({ viewport: { width: 1000, height: 620 } });
 const errors = [];
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
