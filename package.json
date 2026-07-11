@@ -1,0 +1,11 @@
+{
+  "name": "field-command-js",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Vanilla-JS browser port of the CIS35 Unity tug-of-war prototype. Zero runtime deps.",
+  "scripts": {
+    "test": "node --test",
+    "serve": "python3 -m http.server 8000"
+  }
+}

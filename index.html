@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <link rel="icon" href="data:," />
+  <title>Field Command — JS Port</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body {
+      margin: 0; height: 100%; background: #0b0e13; overflow: hidden;
+      font-family: system-ui, sans-serif; touch-action: none;
+    }
+    #stage {
+      position: fixed; inset: 0; display: flex;
+      align-items: center; justify-content: center;
+    }
+    canvas {
+      display: block; image-rendering: pixelated;
+      background: #10141c; touch-action: none;
+    }
+    #hud {
+      position: fixed; inset: 0; pointer-events: none;
+    }
+    #debug {
+      position: fixed; top: 6px; left: 8px; margin: 0;
+      color: #7fd7ff; font: 12px/1.4 ui-monospace, monospace;
+      text-shadow: 0 1px 2px #000; pointer-events: none; white-space: pre;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <canvas id="game"></canvas>
+  </div>
+  <div id="hud"></div>
+  <pre id="debug"></pre>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
