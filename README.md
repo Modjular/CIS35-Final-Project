@@ -1,4 +1,4 @@
-# CIS35-Final-Project — Field Command (JS port)
+# Advance Royale (JS port)
 
 A Clash-Royale-style two-player tug-of-war: drag unit cards onto your half of the
 field, units cost mana and march down lanes toward the enemy HQ, auto-fighting
