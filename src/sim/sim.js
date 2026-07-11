@@ -171,6 +171,7 @@ function faceToward(e, tx) {
 function tickUnit(state, u) {
   u.fireCooldown += DT;
   u.firing = false;
+  u.attacking = false;
   const stats = UNITS[u.unitType];
   const target = acquireTarget(state, u);
 
@@ -178,6 +179,7 @@ function tickUnit(state, u) {
     faceToward(u, target.x);
     if (dist(u.x, u.y, target.x, target.y) < stats.range) {
       // In range: hold position (drag bleeds off any knockback) and attack.
+      u.attacking = true;
       driftAndIntegrate(u, DT);
       if (u.fireCooldown >= stats.attackPeriod) {
         u.fireCooldown = 0;
@@ -221,8 +223,10 @@ function advanceLane(u, lane) {
 function tickTower(state, t) {
   t.fireCooldown += DT;
   t.firing = false;
+  t.attacking = false;
   const target = acquireTarget(state, t);
   if (target && dist(t.x, t.y, target.x, target.y) < TOWER.range) {
+    t.attacking = true;
     faceToward(t, target.x);
     if (t.fireCooldown >= TOWER.attackPeriod) {
       t.fireCooldown = 0;

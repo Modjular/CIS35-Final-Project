@@ -10,19 +10,28 @@ import { step } from './sim/sim.js';
 import { createRenderer } from './render/renderer.js';
 import { createHud } from './render/hud.js';
 import { setupPointer } from './input/pointer.js';
+import { loadSprites } from './render/sprites.js';
+import { createSound } from './audio/sound.js';
 
 const canvas = document.getElementById('game');
 const debugEl = document.getElementById('debug');
 const renderer = createRenderer(canvas);
 const hud = createHud();
+const sound = createSound();
 
 let state = createInitialState();
+
+// Load art + audio asynchronously; the debug backend renders until art is ready.
+loadSprites().then((sm) => renderer.setSprites(sm)).catch((e) => console.warn('sprites', e));
+sound.load().catch((e) => console.warn('audio', e));
 
 const drag = setupPointer(canvas, renderer.cam, hud, {
   enqueue: (cmd) => enqueue(cmd),
   getState: () => state,
   restart: () => { state = createInitialState(); pending = []; },
 });
+// Unlock audio on the first user gesture (autoplay policy).
+canvas.addEventListener('pointerdown', () => sound.resume(), { once: true });
 
 // Pending commands, keyed by nothing fancy: everything queued before a tick is
 // applied on that tick (later: sorted/validated per player for netcode).
@@ -63,8 +72,8 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
-// Audio/other side-effects observe sim events here (wired up in later phases).
-function onEvents(events) { /* Phase 3: audio hooks */ }
+// Audio/other side-effects observe sim events here.
+function onEvents(events) { sound.playEvents(events); }
 
 // ---- Debug overlay + console API --------------------------------------------
 const DEBUG = { grid: true, show: true };

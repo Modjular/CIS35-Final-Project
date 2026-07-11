@@ -35,7 +35,8 @@ export function createUnit(state, team, unitType, x, y) {
     laneSide: side,    // 0 top / 1 bottom
     nextNode: 0,       // index into LANES[team][laneSide]
     facing: team === TEAM.RED ? 1 : -1,  // +1 right, -1 left (sprite flipX)
-    firing: false,     // presentation hint: attacked this tick
+    firing: false,     // presentation hint: fired a shot THIS tick (sound trigger)
+    attacking: false,  // presentation hint: holding + attacking (fire animation)
     hitFlash: 0,       // presentation: seconds of damage-flash remaining
     lane: lanes,       // reference kept out of serialization (see serialize)
   };
@@ -57,6 +58,7 @@ export function createTower(state, team) {
     targetId: null,
     facing: team === TEAM.RED ? 1 : -1,
     firing: false,
+    attacking: false,
     hitFlash: 0,
   };
 }
