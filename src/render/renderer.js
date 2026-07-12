@@ -5,7 +5,7 @@
 // Wars sheets via SpriteManager). The sim is never mutated here — we only read
 // state and interpolate positions between the previous and current tick.
 
-import { FIELD, TEAM, UNITS, TOWER, BAR_SCALE } from '../sim/data.js';
+import { FIELD, TEAM, UNITS, TOWER, BAR_SCALE, SIGHT_RADIUS } from '../sim/data.js';
 import { createCamera, fit, worldToScreen } from './camera.js';
 
 const COLORS = {
@@ -21,6 +21,9 @@ const COLORS = {
   hpBack:    'rgba(0,0,0,0.6)',
   hpFill:    '#5ad15a',
   flash:     '#8ff',
+  collider:  '#ffe14d',
+  range:     'rgba(255,90,90,0.9)',
+  sight:     'rgba(120,200,255,0.7)',
 };
 
 export function createRenderer(canvas) {
@@ -161,6 +164,33 @@ export function createRenderer(canvas) {
 
   let curEffects = [];
 
+  // Debug overlay: physics collider (solid), attack range (dashed), sight
+  // radius (dotted, units only) — drawn over either backend so it's useful
+  // whether or not art has loaded.
+  function drawColliderRing(x, y, r, color, dash) {
+    const s = cam.scale;
+    ctx.save();
+    ctx.setLineDash(dash || []);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(1, cam.dpr || 1);
+    ctx.beginPath();
+    ctx.arc(x, y, r * s, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawColliders(state, alpha) {
+    const all = [...state.towers, ...state.units];
+    for (const e of all) {
+      const pos = rp(e, alpha);
+      const screen = worldToScreen(cam, pos.x, pos.y);
+      const spec = e.kind === 'tower' ? TOWER : UNITS[e.unitType];
+      drawColliderRing(screen.x, screen.y, e.radius, COLORS.collider);
+      if (spec && spec.range) drawColliderRing(screen.x, screen.y, spec.range, COLORS.range, [6, 4]);
+      if (e.kind !== 'tower') drawColliderRing(screen.x, screen.y, SIGHT_RADIUS, COLORS.sight, [2, 4]);
+    }
+  }
+
   function draw(state, alpha, opts = {}) {
     const clock = ((typeof performance !== 'undefined' ? performance.now() : 0) - startTime) / 1000;
     drawField(opts.grid !== false);
@@ -174,6 +204,7 @@ export function createRenderer(canvas) {
     }
     curEffects = state.effects;
     drawEffects(alpha, clock);
+    if (opts.colliders) drawColliders(state, alpha);
   }
 
   return { resize, draw, cam, ctx, setSprites };
