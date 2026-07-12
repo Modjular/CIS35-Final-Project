@@ -5,7 +5,7 @@
 // Wars sheets via SpriteManager). The sim is never mutated here — we only read
 // state and interpolate positions between the previous and current tick.
 
-import { FIELD, TEAM, UNITS, TOWER, BAR_SCALE, SIGHT_RADIUS } from '../sim/data.js';
+import { FIELD, TEAM, UNITS, TOWER, BAR_SCALE, SIGHT_RADIUS, MAP_RECT } from '../sim/data.js';
 import { createCamera, fit, worldToScreen } from './camera.js';
 
 const COLORS = {
@@ -61,7 +61,10 @@ export function createRenderer(canvas) {
 
     if (sprites && sprites.hasMap()) {
       const im = sprites.image('map');
-      ctx.drawImage(im.img, 0, 0, im.w, im.h, tl.x, tl.y, fieldW, fieldH);
+      // Draw at the map art's true world-space rect (bleeds past FIELD on all
+      // sides), not stretched to FIELD — see MAP_RECT for why.
+      const mapTl = worldToScreen(cam, MAP_RECT.x, MAP_RECT.y + MAP_RECT.h);
+      ctx.drawImage(im.img, 0, 0, im.w, im.h, mapTl.x, mapTl.y, MAP_RECT.w * s, MAP_RECT.h * s);
     } else {
       ctx.fillStyle = COLORS.fieldRed;
       ctx.fillRect(tl.x, tl.y, (FIELD.W / 2) * s, fieldH);
