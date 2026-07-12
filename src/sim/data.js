@@ -23,6 +23,15 @@ export const FIELD = {
   ASPECT_H: 6,
 };
 
+// Background map art's world-space placement (Assets/Main.unity "Map" object:
+// position (-2,-2), sprite pivot bottom-left; map1_waterV2.png is 416x256px at
+// 16px/unit = 26x16 world units). The art bleeds 2 units past FIELD on every
+// side (water border around the playable field/camera). Stretching the image
+// to fit FIELD exactly — instead of drawing it at this native size/offset —
+// squashes it and throws the road/bridge art out of alignment with the lane
+// waypoints below, which were authored against the real Unity world space.
+export const MAP_RECT = { x: -2, y: -2, w: 26, h: 16 };
+
 // Placement halves (inclusive world bounds used for validation + grid snap).
 // Middle strip x in (10,12) is no-man's-land — nobody may place there.
 export const PLACEMENT = {

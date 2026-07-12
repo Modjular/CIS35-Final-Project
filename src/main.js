@@ -67,7 +67,7 @@ function frame(now) {
   if (steps === MAX_STEPS) acc = 0;
 
   const alpha = acc / DT;
-  renderer.draw(state, alpha, { grid: DEBUG.grid });
+  renderer.draw(state, alpha, { grid: DEBUG.grid, colliders: DEBUG.colliders });
   hud.draw(renderer.ctx, renderer.cam, state, drag, spriteMgr);
   drawDebugOverlay(steps);
   requestAnimationFrame(frame);
@@ -77,7 +77,16 @@ function frame(now) {
 function onEvents(events) { sound.playEvents(events); }
 
 // ---- Debug overlay + console API --------------------------------------------
-const DEBUG = { grid: true, show: true };
+const DEBUG = { grid: true, show: true, colliders: false };
+
+// 'g' grid, 'c' colliders/hitboxes/ranges overlay, 'h' hide/show the whole HUD readout.
+window.addEventListener('keydown', (e) => {
+  if (e.repeat) return;
+  const key = e.key.toLowerCase();
+  if (key === 'g') DEBUG.grid = !DEBUG.grid;
+  else if (key === 'c') DEBUG.colliders = !DEBUG.colliders;
+  else if (key === 'h') DEBUG.show = !DEBUG.show;
+});
 
 function drawDebugOverlay() {
   if (!DEBUG.show) { debugEl.textContent = ''; return; }
@@ -86,7 +95,9 @@ function drawDebugOverlay() {
     `tick ${state.tick}  (${TICK_RATE}Hz)\n` +
     `${p}\n` +
     `units=${state.units.length} effects=${state.effects.length}` +
-    (state.winner ? `\nWINNER: ${state.winner}` : '');
+    (state.winner ? `\nWINNER: ${state.winner}` : '') +
+    `\n[g]rid:${DEBUG.grid} [c]olliders:${DEBUG.colliders} [h]ud  ` +
+    (DEBUG.colliders ? '(yellow=collider, red=attack range, blue=sight)' : '');
 }
 
 function onResize() { renderer.resize(); }
